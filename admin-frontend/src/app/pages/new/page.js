@@ -23,7 +23,7 @@ export default function NewPage() {
 
   const [saving, setSaving] = useState(false);
 
-  // Generate slug from page title
+  // Generate slug automatically from title
   const createSlug = (value) => {
     return value
       .toLowerCase()
@@ -33,7 +33,7 @@ export default function NewPage() {
       .replace(/-+/g, "-");
   };
 
-  // Handle normal form fields
+  // Handle main form fields
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -53,7 +53,7 @@ export default function NewPage() {
     });
   };
 
-  // Add new content section
+  // Add a new content section
   const addSection = () => {
     const newSection = {
       type: "heading",
@@ -68,18 +68,35 @@ export default function NewPage() {
     }));
   };
 
-  // Update section type or text
-  const updateSection = (index, field, value) => {
+  // Change section type or update heading/paragraph text
+  const updateSection = (sectionIndex, field, value) => {
     setFormData((current) => {
-      const updatedSections = current.sections.map((section, sectionIndex) => {
-        if (sectionIndex !== index) {
+      const updatedSections = current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
           return section;
         }
 
         if (field === "type") {
+          let content;
+
+          if (value === "list") {
+            content = {
+              items: [""],
+            };
+          } else if (value === "table") {
+            content = {
+              headers: ["Column 1", "Column 2"],
+              rows: [["", ""]],
+            };
+          } else {
+            content = {
+              text: "",
+            };
+          }
+
           return {
             type: value,
-            content: value === "list" ? { items: [""] } : { text: "" },
+            content,
           };
         }
 
@@ -99,17 +116,15 @@ export default function NewPage() {
     });
   };
 
-  // Remove complete section
-  const removeSection = (index) => {
+  // Remove a complete content section
+  const removeSection = (sectionIndex) => {
     setFormData((current) => ({
       ...current,
-      sections: current.sections.filter(
-        (_, sectionIndex) => sectionIndex !== index,
-      ),
+      sections: current.sections.filter((_, index) => index !== sectionIndex),
     }));
   };
 
-  // Add new item inside a list section
+  // Add an item to a list section
   const addListItem = (sectionIndex) => {
     setFormData((current) => {
       const updatedSections = current.sections.map((section, index) => {
@@ -133,7 +148,7 @@ export default function NewPage() {
     });
   };
 
-  // Update individual list item
+  // Update a list item
   const updateListItem = (sectionIndex, itemIndex, value) => {
     setFormData((current) => {
       const updatedSections = current.sections.map((section, index) => {
@@ -161,7 +176,7 @@ export default function NewPage() {
     });
   };
 
-  // Remove individual list item
+  // Remove a list item
   const removeListItem = (sectionIndex, itemIndex) => {
     setFormData((current) => {
       const updatedSections = current.sections.map((section, index) => {
@@ -169,13 +184,18 @@ export default function NewPage() {
           return section;
         }
 
+        const currentItems = section.content.items || [];
+
+        // Keep at least one input for a list section
+        if (currentItems.length <= 1) {
+          return section;
+        }
+
         return {
           ...section,
           content: {
             ...section.content,
-            items: (section.content.items || []).filter(
-              (_, index) => index !== itemIndex,
-            ),
+            items: currentItems.filter((_, index) => index !== itemIndex),
           },
         };
       });
@@ -187,7 +207,165 @@ export default function NewPage() {
     });
   };
 
-  // Create page
+  // Update table header
+  const updateTableHeader = (sectionIndex, headerIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        const headers = [...(section.content?.headers || [])];
+
+        headers[headerIndex] = value;
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            headers,
+          },
+        };
+      }),
+    }));
+  };
+
+  // Update table cell
+  const updateTableCell = (sectionIndex, rowIndex, columnIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        const rows = (section.content?.rows || []).map((row) => [...row]);
+
+        rows[rowIndex][columnIndex] = value;
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            rows,
+          },
+        };
+      }),
+    }));
+  };
+
+  // Add table column
+  const addTableColumn = (sectionIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        const headers = section.content?.headers || [];
+        const rows = section.content?.rows || [];
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+
+            headers: [...headers, `Column ${headers.length + 1}`],
+
+            rows: rows.map((row) => [...row, ""]),
+          },
+        };
+      }),
+    }));
+  };
+
+  // Remove table column
+  const removeTableColumn = (sectionIndex, columnIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        const headers = section.content?.headers || [];
+
+        if (headers.length <= 1) {
+          return section;
+        }
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+
+            headers: headers.filter((_, index) => index !== columnIndex),
+
+            rows: (section.content?.rows || []).map((row) =>
+              row.filter((_, index) => index !== columnIndex),
+            ),
+          },
+        };
+      }),
+    }));
+  };
+
+  // Add table row
+  const addTableRow = (sectionIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        const columnCount = section.content?.headers?.length || 1;
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+
+            rows: [
+              ...(section.content?.rows || []),
+              Array(columnCount).fill(""),
+            ],
+          },
+        };
+      }),
+    }));
+  };
+
+  // Remove table row
+  const removeTableRow = (sectionIndex, rowIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        const rows = section.content?.rows || [];
+
+        if (rows.length <= 1) {
+          return section;
+        }
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+
+            rows: rows.filter((_, index) => index !== rowIndex),
+          },
+        };
+      }),
+    }));
+  };
+
+  // Submit and create page
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -201,15 +379,36 @@ export default function NewPage() {
       return;
     }
 
-    // Validate all dynamic sections
+    // Validate dynamic sections
     const hasEmptySection = formData.sections.some((section) => {
       if (section.type === "list") {
-        const items = section.content.items || [];
+        const items = section.content?.items || [];
 
         return items.length === 0 || items.some((item) => !item.trim());
       }
 
-      return !section.content.text?.trim();
+      if (section.type === "table") {
+        const headers = section.content?.headers || [];
+        const rows = section.content?.rows || [];
+
+        if (headers.length === 0 || headers.some((header) => !header.trim())) {
+          return true;
+        }
+
+        if (
+          rows.length === 0 ||
+          rows.some(
+            (row) =>
+              row.length !== headers.length || row.some((cell) => !cell.trim()),
+          )
+        ) {
+          return true;
+        }
+
+        return false;
+      }
+
+      return !section.content?.text?.trim();
     });
 
     if (hasEmptySection) {
@@ -248,7 +447,6 @@ export default function NewPage() {
 
         <form className="page-form" onSubmit={handleSubmit}>
           {/* Page Title */}
-
           <div className="form-group">
             <label htmlFor="title">
               Page Title <span>*</span>
@@ -265,7 +463,6 @@ export default function NewPage() {
           </div>
 
           {/* Slug */}
-
           <div className="form-group">
             <label htmlFor="slug">
               Slug <span>*</span>
@@ -288,7 +485,6 @@ export default function NewPage() {
           </div>
 
           {/* Description */}
-
           <div className="form-group">
             <label htmlFor="description">Description</label>
 
@@ -303,7 +499,6 @@ export default function NewPage() {
           </div>
 
           {/* Status */}
-
           <div className="form-group">
             <label htmlFor="status">Status</label>
 
@@ -319,8 +514,7 @@ export default function NewPage() {
             </select>
           </div>
 
-          {/* Dynamic Content */}
-
+          {/* Dynamic Content Sections */}
           <div className="sections-area">
             <div className="sections-header">
               <div>
@@ -346,44 +540,44 @@ export default function NewPage() {
               </div>
             ) : (
               <div className="sections-list">
-                {formData.sections.map((section, index) => (
-                  <div className="section-card" key={index}>
+                {formData.sections.map((section, sectionIndex) => (
+                  <div className="section-card" key={sectionIndex}>
                     {/* Section Header */}
-
                     <div className="section-top">
-                      <strong>Section {index + 1}</strong>
+                      <strong>Section {sectionIndex + 1}</strong>
 
                       <button
                         type="button"
                         className="remove-section-button"
-                        onClick={() => removeSection(index)}
+                        onClick={() => removeSection(sectionIndex)}
                       >
                         Remove
                       </button>
                     </div>
 
                     {/* Section Type */}
-
                     <div className="form-group">
                       <label>Section Type</label>
 
                       <select
                         value={section.type}
                         onChange={(event) =>
-                          updateSection(index, "type", event.target.value)
+                          updateSection(
+                            sectionIndex,
+                            "type",
+                            event.target.value,
+                          )
                         }
                       >
                         <option value="heading">Heading</option>
-
                         <option value="paragraph">Paragraph</option>
-
                         <option value="list">List</option>
+                        <option value="table">Table</option>
                       </select>
                     </div>
 
-                    {/* Heading / Paragraph */}
-
-                    {section.type !== "list" && (
+                    {/* Heading / Paragraph Editor */}
+                    {section.type !== "list" && section.type !== "table" && (
                       <div className="form-group">
                         <label>
                           {section.type === "heading"
@@ -398,74 +592,183 @@ export default function NewPage() {
                               ? "Enter heading"
                               : "Enter paragraph"
                           }
-                          value={section.content.text || ""}
+                          value={section.content?.text || ""}
                           onChange={(event) =>
-                            updateSection(index, "text", event.target.value)
+                            updateSection(
+                              sectionIndex,
+                              "text",
+                              event.target.value,
+                            )
                           }
                         />
                       </div>
                     )}
+                    {/* Table Editor */}
+                    {section.type === "table" && (
+                      <div className="form-group table-editor">
+                        <div className="table-editor-heading">
+                          <label>Table Content</label>
+
+                          <div className="table-actions">
+                            <button
+                              type="button"
+                              className="add-list-item-button"
+                              onClick={() => addTableColumn(sectionIndex)}
+                            >
+                              + Add Column
+                            </button>
+
+                            <button
+                              type="button"
+                              className="add-list-item-button"
+                              onClick={() => addTableRow(sectionIndex)}
+                            >
+                              + Add Row
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="table-editor-scroll">
+                          <table className="cms-table-editor">
+                            <thead>
+                              <tr>
+                                {(section.content?.headers || []).map(
+                                  (header, headerIndex) => (
+                                    <th key={headerIndex}>
+                                      <div className="table-header-input">
+                                        <input
+                                          type="text"
+                                          value={header}
+                                          placeholder={`Column ${headerIndex + 1}`}
+                                          onChange={(event) =>
+                                            updateTableHeader(
+                                              sectionIndex,
+                                              headerIndex,
+                                              event.target.value,
+                                            )
+                                          }
+                                        />
+
+                                        <button
+                                          type="button"
+                                          className="table-remove-button"
+                                          disabled={
+                                            section.content?.headers?.length <=
+                                            1
+                                          }
+                                          onClick={() =>
+                                            removeTableColumn(
+                                              sectionIndex,
+                                              headerIndex,
+                                            )
+                                          }
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    </th>
+                                  ),
+                                )}
+
+                                <th className="table-action-column">Action</th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {(section.content?.rows || []).map(
+                                (row, rowIndex) => (
+                                  <tr key={rowIndex}>
+                                    {row.map((cell, columnIndex) => (
+                                      <td key={columnIndex}>
+                                        <input
+                                          type="text"
+                                          value={cell}
+                                          placeholder="Enter value"
+                                          onChange={(event) =>
+                                            updateTableCell(
+                                              sectionIndex,
+                                              rowIndex,
+                                              columnIndex,
+                                              event.target.value,
+                                            )
+                                          }
+                                        />
+                                      </td>
+                                    ))}
+
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="remove-list-item-button"
+                                        disabled={
+                                          section.content?.rows?.length <= 1
+                                        }
+                                        onClick={() =>
+                                          removeTableRow(sectionIndex, rowIndex)
+                                        }
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ),
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
                     {/* List Editor */}
-
                     {section.type === "list" && (
-                      <div className="list-editor">
-                        <div className="list-editor-header">
+                      <div className="form-group">
+                        <div className="list-heading-row">
                           <label>List Items</label>
 
                           <button
                             type="button"
-                            className="add-item-button"
-                            onClick={() => addListItem(index)}
+                            className="add-list-item-button"
+                            onClick={() => addListItem(sectionIndex)}
                           >
                             + Add Item
                           </button>
                         </div>
 
-                        {!section.content.items ||
-                        section.content.items.length === 0 ? (
-                          <div className="no-items">
-                            <p>No list items added yet.</p>
+                        <div className="list-items">
+                          {(section.content?.items || []).map(
+                            (item, itemIndex) => (
+                              <div className="list-item-row" key={itemIndex}>
+                                <span className="list-item-number">
+                                  {itemIndex + 1}.
+                                </span>
 
-                            <button
-                              type="button"
-                              className="add-item-button"
-                              onClick={() => addListItem(index)}
-                            >
-                              + Add First Item
-                            </button>
-                          </div>
-                        ) : (
-                          section.content.items.map((item, itemIndex) => (
-                            <div className="list-item-row" key={itemIndex}>
-                              <span className="item-number">
-                                {itemIndex + 1}.
-                              </span>
+                                <input
+                                  type="text"
+                                  placeholder={`List item ${itemIndex + 1}`}
+                                  value={item}
+                                  onChange={(event) =>
+                                    updateListItem(
+                                      sectionIndex,
+                                      itemIndex,
+                                      event.target.value,
+                                    )
+                                  }
+                                />
 
-                              <input
-                                type="text"
-                                placeholder={`List item ${itemIndex + 1}`}
-                                value={item}
-                                onChange={(event) =>
-                                  updateListItem(
-                                    index,
-                                    itemIndex,
-                                    event.target.value,
-                                  )
-                                }
-                              />
-
-                              <button
-                                type="button"
-                                className="remove-item-button"
-                                aria-label={`Remove list item ${itemIndex + 1}`}
-                                onClick={() => removeListItem(index, itemIndex)}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))
-                        )}
+                                <button
+                                  type="button"
+                                  className="remove-list-item-button"
+                                  onClick={() =>
+                                    removeListItem(sectionIndex, itemIndex)
+                                  }
+                                  disabled={section.content?.items?.length <= 1}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ),
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -475,7 +778,6 @@ export default function NewPage() {
           </div>
 
           {/* Form Actions */}
-
           <div className="form-actions">
             <Link href="/pages" className="cancel-button">
               Cancel
