@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 import AdminLayout from "@/components/layout/AdminLayout";
 import { getPages, deletePage } from "@/services/pageService";
-import toast from "react-hot-toast";
 
 import "./pages.css";
 
@@ -13,7 +13,6 @@ export default function PagesPage() {
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
@@ -27,6 +26,7 @@ export default function PagesPage() {
       setError("");
 
       const data = await getPages();
+
       setPages(data.pages || []);
     } catch (error) {
       setError(error.message || "Failed to load pages");
@@ -35,14 +35,10 @@ export default function PagesPage() {
     }
   };
 
-  const handleDelete = async (page) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${page.title}"?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
+  // Delete page
+  const confirmDelete = async (page, toastId) => {
+    // Remove confirmation immediately
+    toast.remove(toastId);
 
     try {
       setDeletingId(page._id);
@@ -53,12 +49,56 @@ export default function PagesPage() {
         currentPages.filter((currentPage) => currentPage._id !== page._id),
       );
 
-      toast.success("Page deleted successfully");
+      toast.success("Page deleted successfully", {
+        duration: 2000,
+      });
     } catch (error) {
-      toast.error(error.message || "Failed to delete page");
+      toast.error(error.message || "Failed to delete page", {
+        duration: 3000,
+      });
     } finally {
       setDeletingId(null);
     }
+  };
+
+  // Show delete confirmation
+  const handleDelete = (page) => {
+    toast.custom(
+      (t) => (
+        <div className="delete-toast">
+          <div className="delete-toast-content">
+            <h4>Delete Page?</h4>
+
+            <p>
+              Are you sure you want to delete <strong>{page.title}</strong>?
+            </p>
+
+            <span>This action cannot be undone.</span>
+          </div>
+
+          <div className="delete-toast-actions">
+            <button
+              type="button"
+              className="toast-cancel-button"
+              onClick={() => toast.remove(t.id)}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              className="toast-delete-button"
+              onClick={() => confirmDelete(page, t.id)}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+      },
+    );
   };
 
   const formatDate = (date) => {

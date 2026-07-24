@@ -11,7 +11,10 @@ function renderSection(section, index) {
 
   if (section.type === "heading") {
     return (
-      <section className="content-section" key={section._id || index}>
+      <section
+        className="content-section heading-section"
+        key={section._id || index}
+      >
         <h2>{section.content?.text}</h2>
       </section>
     );
