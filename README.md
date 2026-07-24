@@ -2,13 +2,23 @@
 
 RenewCred CMS is a full-stack content management system built for the Frontend Engineering Assignment.
 
-The project has three main parts:
+The project includes an Admin CMS, an Express.js backend, and a public Next.js website that displays CMS-managed content dynamically.
 
-- An Admin CMS for managing website content
-- An Express.js API for authentication and content management
-- A public Next.js website that loads published content dynamically
+## Evaluation Credentials
 
-The main idea behind the project was to keep website content out of the frontend code. An admin can create, edit, publish, or delete pages from the CMS, and the public website retrieves the latest published content through the backend APIs.
+**Admin CMS:** `http://localhost:3000`
+
+**Email:** `admin@renewcred.com`  
+**Password:** `adminRenewCred123`
+
+> These credentials are provided only for local assignment evaluation.
+
+## Quick Start
+
+````bash
+git clone https://github.com/venkateshmacherla/renewcred-cms.git
+cd renewcred-cms
+docker compose up -d --build
 
 ---
 
@@ -49,7 +59,7 @@ renewcred-cms/
 ├── backend/
 ├── docker-compose.yml
 └── README.md
-```
+````
 
 ### `admin-frontend`
 
