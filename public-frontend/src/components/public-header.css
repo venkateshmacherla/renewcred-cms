@@ -142,3 +142,82 @@
     flex-shrink: 0;
   }
 }
+
+/* More menu */
+.more-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* More button */
+.more-button {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #344054;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.more-button:hover,
+.more-menu.active .more-button {
+  color: #192a5e;
+  background: #f2f4f7;
+}
+
+.more-arrow {
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+/* Dropdown */
+.more-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+
+  display: none;
+  min-width: 190px;
+  padding: 6px;
+
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
+/* Show dropdown */
+.more-menu:hover .more-dropdown,
+.more-menu:focus-within .more-dropdown {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dropdown links */
+.more-dropdown a {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+
+  color: #344054;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.more-dropdown a:hover {
+  color: #192a5e;
+  background: #f2f4f7;
+}
+
+/* Active dropdown page */
+.more-dropdown a.active {
+  color: #192a5e;
+  background: #f2f4f7;
+  font-weight: 600;
+}
