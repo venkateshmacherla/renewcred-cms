@@ -72,6 +72,30 @@ function renderSection(section, index) {
     );
   }
 
+  if (section.type === "equation") {
+    return (
+      <section
+        className="content-section equation-section"
+        key={section._id || index}
+      >
+        <div className="equation-content">{section.content?.text}</div>
+      </section>
+    );
+  }
+
+  if (section.type === "code") {
+    return (
+      <section
+        className="content-section code-section"
+        key={section._id || index}
+      >
+        <pre>
+          <code>{section.content?.text}</code>
+        </pre>
+      </section>
+    );
+  }
+
   return null;
 }
 

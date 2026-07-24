@@ -134,3 +134,41 @@
     padding: 12px 14px;
   }
 }
+
+/* Equation Content */
+
+.equation-section {
+  overflow-x: auto;
+}
+
+.equation-content {
+  padding: 20px;
+  text-align: center;
+  font-family: "Times New Roman", serif;
+  font-size: 1.25rem;
+  font-style: italic;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Code Content */
+
+.code-section {
+  overflow-x: auto;
+}
+
+.code-section pre {
+  margin: 0;
+  padding: 20px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #111827;
+}
+
+.code-section code {
+  font-family: "Courier New", monospace;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  white-space: pre;
+  color: #f9fafb;
+}

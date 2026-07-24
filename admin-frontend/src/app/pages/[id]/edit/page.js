@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -9,6 +9,91 @@ import AdminLayout from "@/components/layout/AdminLayout";
 import { getPageById, updatePage } from "@/services/pageService";
 
 import "./edit-page.css";
+
+/* DROPDOWN OPTIONS */
+
+const STATUS_OPTIONS = [
+  { value: "draft", label: "Draft" },
+  { value: "published", label: "Published" },
+];
+
+const SECTION_TYPE_OPTIONS = [
+  { value: "heading", label: "Heading" },
+  { value: "paragraph", label: "Paragraph" },
+  { value: "list", label: "List" },
+  { value: "table", label: "Table" },
+  { value: "equation", label: "Equation" },
+  { value: "code", label: "Code Block" },
+];
+
+/* CUSTOM RESPONSIVE SELECT */
+
+function CustomSelect({
+  value,
+  options,
+  onChange,
+  ariaLabel = "Select option",
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const selectedOption =
+    options.find((option) => option.value === value) || options[0];
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  const handleSelect = (newValue) => {
+    onChange(newValue);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="custom-select" ref={dropdownRef}>
+      <button
+        type="button"
+        className={`custom-select-trigger ${isOpen ? "open" : ""}`}
+        onClick={() => setIsOpen((current) => !current)}
+        aria-label={ariaLabel}
+        aria-expanded={isOpen}
+      >
+        <span>{selectedOption?.label}</span>
+
+        <span className="custom-select-arrow">{isOpen ? "▲" : "▼"}</span>
+      </button>
+
+      {isOpen && (
+        <div className="custom-select-menu">
+          {options.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              className={`custom-select-option ${
+                option.value === value ? "selected" : ""
+              }`}
+              onClick={() => handleSelect(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* EDIT PAGE */
 
 export default function EditPage({ params }) {
   const router = useRouter();
@@ -25,9 +110,7 @@ export default function EditPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // =====================================================
-  // NORMALIZE SECTION DATA FROM BACKEND
-  // =====================================================
+  /* NORMALIZE BACKEND SECTION DATA */
 
   const normalizeSection = (section) => {
     if (section.type === "list") {
@@ -63,6 +146,16 @@ export default function EditPage({ params }) {
       };
     }
 
+    if (section.type === "code") {
+      return {
+        ...section,
+        content: {
+          text: section.content?.text || "",
+          language: section.content?.language || "javascript",
+        },
+      };
+    }
+
     return {
       ...section,
       content: {
@@ -71,9 +164,7 @@ export default function EditPage({ params }) {
     };
   };
 
-  // =====================================================
-  // LOAD EXISTING PAGE
-  // =====================================================
+  /* LOAD EXISTING PAGE */
 
   useEffect(() => {
     const loadPage = async () => {
@@ -101,9 +192,7 @@ export default function EditPage({ params }) {
     loadPage();
   }, [id]);
 
-  // =====================================================
-  // BASIC PAGE FIELDS
-  // =====================================================
+  /* UPDATE BASIC FIELDS */
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -114,9 +203,7 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // CREATE CONTENT BASED ON SECTION TYPE
-  // =====================================================
+  /* GET DEFAULT SECTION CONTENT */
 
   const getDefaultContent = (type) => {
     switch (type) {
@@ -131,8 +218,17 @@ export default function EditPage({ params }) {
           rows: [["", ""]],
         };
 
-      case "heading":
-      case "paragraph":
+      case "code":
+        return {
+          text: "",
+          language: "javascript",
+        };
+
+      case "equation":
+        return {
+          text: "",
+        };
+
       default:
         return {
           text: "",
@@ -140,27 +236,25 @@ export default function EditPage({ params }) {
     }
   };
 
-  // =====================================================
-  // ADD SECTION
-  // =====================================================
+  /* ADD SECTION */
 
   const addSection = () => {
-    const newSection = {
-      type: "heading",
-      content: {
-        text: "",
-      },
-    };
-
     setFormData((current) => ({
       ...current,
-      sections: [...current.sections, newSection],
+
+      sections: [
+        ...current.sections,
+        {
+          type: "heading",
+          content: {
+            text: "",
+          },
+        },
+      ],
     }));
   };
 
-  // =====================================================
-  // CHANGE SECTION TYPE
-  // =====================================================
+  /* CHANGE SECTION TYPE */
 
   const changeSectionType = (sectionIndex, newType) => {
     setFormData((current) => ({
@@ -180,9 +274,7 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // UPDATE TEXT SECTION
-  // =====================================================
+  /* UPDATE TEXT CONTENT */
 
   const updateSectionText = (sectionIndex, value) => {
     setFormData((current) => ({
@@ -205,9 +297,30 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // REMOVE SECTION
-  // =====================================================
+  /* UPDATE ANY SECTION CONTENT FIELD */
+
+  const updateSectionContent = (sectionIndex, field, value) => {
+    setFormData((current) => ({
+      ...current,
+
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) {
+          return section;
+        }
+
+        return {
+          ...section,
+
+          content: {
+            ...section.content,
+            [field]: value,
+          },
+        };
+      }),
+    }));
+  };
+
+  /* REMOVE SECTION */
 
   const removeSection = (sectionIndex) => {
     setFormData((current) => ({
@@ -217,9 +330,7 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // LIST FUNCTIONS
-  // =====================================================
+  /* LIST FUNCTIONS */
 
   const addListItem = (sectionIndex) => {
     setFormData((current) => ({
@@ -275,6 +386,17 @@ export default function EditPage({ params }) {
   };
 
   const removeListItem = (sectionIndex, itemIndex) => {
+    const section = formData.sections[sectionIndex];
+
+    const items = Array.isArray(section?.content?.items)
+      ? section.content.items
+      : [];
+
+    if (items.length <= 1) {
+      toast.error("List must have at least one item");
+      return;
+    }
+
     setFormData((current) => ({
       ...current,
 
@@ -283,26 +405,22 @@ export default function EditPage({ params }) {
           return section;
         }
 
-        const items = Array.isArray(section.content?.items)
-          ? section.content.items
-          : [];
-
         return {
           ...section,
 
           content: {
             ...section.content,
 
-            items: items.filter((_, index) => index !== itemIndex),
+            items: section.content.items.filter(
+              (_, index) => index !== itemIndex,
+            ),
           },
         };
       }),
     }));
   };
 
-  // =====================================================
-  // TABLE - ADD COLUMN
-  // =====================================================
+  /* TABLE - ADD COLUMN */
 
   const addTableColumn = (sectionIndex) => {
     setFormData((current) => ({
@@ -336,11 +454,20 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // TABLE - REMOVE COLUMN
-  // =====================================================
+  /* TABLE - REMOVE COLUMN */
 
   const removeTableColumn = (sectionIndex, columnIndex) => {
+    const section = formData.sections[sectionIndex];
+
+    const headers = Array.isArray(section?.content?.headers)
+      ? section.content.headers
+      : [];
+
+    if (headers.length <= 1) {
+      toast.error("Table must have at least one column");
+      return;
+    }
+
     setFormData((current) => ({
       ...current,
 
@@ -349,7 +476,7 @@ export default function EditPage({ params }) {
           return section;
         }
 
-        const headers = Array.isArray(section.content?.headers)
+        const currentHeaders = Array.isArray(section.content?.headers)
           ? section.content.headers
           : [];
 
@@ -357,18 +484,13 @@ export default function EditPage({ params }) {
           ? section.content.rows
           : [];
 
-        if (headers.length <= 1) {
-          toast.error("Table must have at least one column");
-          return section;
-        }
-
         return {
           ...section,
 
           content: {
             ...section.content,
 
-            headers: headers.filter((_, index) => index !== columnIndex),
+            headers: currentHeaders.filter((_, index) => index !== columnIndex),
 
             rows: rows.map((row) =>
               Array.isArray(row)
@@ -381,9 +503,7 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // TABLE - UPDATE HEADER
-  // =====================================================
+  /* TABLE - UPDATE HEADER */
 
   const updateTableHeader = (sectionIndex, columnIndex, value) => {
     setFormData((current) => ({
@@ -413,9 +533,7 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // TABLE - ADD ROW
-  // =====================================================
+  /* TABLE - ADD ROW */
 
   const addTableRow = (sectionIndex) => {
     setFormData((current) => ({
@@ -434,25 +552,33 @@ export default function EditPage({ params }) {
           ? section.content.rows
           : [];
 
-        const newRow = headers.map(() => "");
-
         return {
           ...section,
 
           content: {
             ...section.content,
-            rows: [...rows, newRow],
+
+            rows: [...rows, headers.map(() => "")],
           },
         };
       }),
     }));
   };
 
-  // =====================================================
-  // TABLE - REMOVE ROW
-  // =====================================================
+  /* TABLE - REMOVE ROW */
 
   const removeTableRow = (sectionIndex, rowIndex) => {
+    const section = formData.sections[sectionIndex];
+
+    const rows = Array.isArray(section?.content?.rows)
+      ? section.content.rows
+      : [];
+
+    if (rows.length <= 1) {
+      toast.error("Table must have at least one row");
+      return;
+    }
+
     setFormData((current) => ({
       ...current,
 
@@ -461,26 +587,20 @@ export default function EditPage({ params }) {
           return section;
         }
 
-        const rows = Array.isArray(section.content?.rows)
-          ? section.content.rows
-          : [];
-
         return {
           ...section,
 
           content: {
             ...section.content,
 
-            rows: rows.filter((_, index) => index !== rowIndex),
+            rows: section.content.rows.filter((_, index) => index !== rowIndex),
           },
         };
       }),
     }));
   };
 
-  // =====================================================
-  // TABLE - UPDATE CELL
-  // =====================================================
+  /* TABLE - UPDATE CELL */
 
   const updateTableCell = (sectionIndex, rowIndex, columnIndex, value) => {
     setFormData((current) => ({
@@ -500,7 +620,9 @@ export default function EditPage({ params }) {
             return row;
           }
 
-          return row.map((cell, currentColumnIndex) =>
+          const safeRow = Array.isArray(row) ? row : [];
+
+          return safeRow.map((cell, currentColumnIndex) =>
             currentColumnIndex === columnIndex ? value : cell,
           );
         });
@@ -517,12 +639,12 @@ export default function EditPage({ params }) {
     }));
   };
 
-  // =====================================================
-  // VALIDATE SECTIONS
-  // =====================================================
+  /* VALIDATE SECTIONS */
 
   const validateSections = () => {
     for (const section of formData.sections) {
+      /* Heading / Paragraph */
+
       if (section.type === "heading" || section.type === "paragraph") {
         if (!section.content?.text?.trim()) {
           toast.error(`Please enter content for the ${section.type} section`);
@@ -531,6 +653,33 @@ export default function EditPage({ params }) {
         }
       }
 
+      /* Equation */
+
+      if (section.type === "equation") {
+        if (!section.content?.text?.trim()) {
+          toast.error("Please enter an equation");
+          return false;
+        }
+      }
+
+      /* Code Block */
+
+      if (section.type === "code") {
+        if (!section.content?.language?.trim()) {
+          toast.error("Please enter a language for the code block");
+
+          return false;
+        }
+
+        if (!section.content?.text?.trim()) {
+          toast.error("Please enter code");
+
+          return false;
+        }
+      }
+
+      /* List */
+
       if (section.type === "list") {
         const items = Array.isArray(section.content?.items)
           ? section.content.items
@@ -538,14 +687,18 @@ export default function EditPage({ params }) {
 
         if (items.length === 0) {
           toast.error("Please add at least one list item");
+
           return false;
         }
 
         if (items.some((item) => !String(item).trim())) {
           toast.error("Please complete all list items");
+
           return false;
         }
       }
+
+      /* Table */
 
       if (section.type === "table") {
         const headers = Array.isArray(section.content?.headers)
@@ -558,16 +711,19 @@ export default function EditPage({ params }) {
 
         if (headers.length === 0) {
           toast.error("Table must have at least one column");
+
           return false;
         }
 
         if (headers.some((header) => !String(header).trim())) {
           toast.error("Please complete all table headers");
+
           return false;
         }
 
         if (rows.length === 0) {
           toast.error("Please add at least one table row");
+
           return false;
         }
 
@@ -577,6 +733,7 @@ export default function EditPage({ params }) {
 
         if (hasEmptyCell) {
           toast.error("Please complete all table cells");
+
           return false;
         }
       }
@@ -585,9 +742,7 @@ export default function EditPage({ params }) {
     return true;
   };
 
-  // =====================================================
-  // SAVE UPDATED PAGE
-  // =====================================================
+  /* SAVE PAGE */
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -619,7 +774,7 @@ export default function EditPage({ params }) {
         description: formData.description.trim(),
 
         sections: formData.sections.map((section) => {
-          // Do not manually send MongoDB section ID
+          // MongoDB generates section IDs automatically.
           const { _id, ...sectionWithoutId } = section;
 
           return sectionWithoutId;
@@ -639,9 +794,7 @@ export default function EditPage({ params }) {
     }
   };
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+  /* LOADING */
 
   if (loading) {
     return (
@@ -653,14 +806,12 @@ export default function EditPage({ params }) {
     );
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
+  /* UI */
 
   return (
     <AdminLayout>
       <div className="new-page-container">
-        {/* PAGE HEADER */}
+        {/* PAGE HEADING */}
 
         <div className="new-page-heading">
           <div>
@@ -673,6 +824,8 @@ export default function EditPage({ params }) {
             Back to Pages
           </Link>
         </div>
+
+        {/* FORM */}
 
         <form className="page-form" onSubmit={handleSubmit}>
           {/* PAGE TITLE */}
@@ -730,18 +883,19 @@ export default function EditPage({ params }) {
           {/* STATUS */}
 
           <div className="form-group">
-            <label htmlFor="status">Status</label>
+            <label>Status</label>
 
-            <select
-              id="status"
-              name="status"
+            <CustomSelect
               value={formData.status}
-              onChange={handleChange}
-            >
-              <option value="draft">Draft</option>
-
-              <option value="published">Published</option>
-            </select>
+              options={STATUS_OPTIONS}
+              ariaLabel="Select page status"
+              onChange={(value) =>
+                setFormData((current) => ({
+                  ...current,
+                  status: value,
+                }))
+              }
+            />
           </div>
 
           {/* PAGE CONTENT */}
@@ -797,20 +951,16 @@ export default function EditPage({ params }) {
                     <div className="form-group">
                       <label>Section Type</label>
 
-                      <select
+                      <CustomSelect
                         value={section.type}
-                        onChange={(event) =>
-                          changeSectionType(sectionIndex, event.target.value)
+                        options={SECTION_TYPE_OPTIONS}
+                        ariaLabel={`Select type for section ${
+                          sectionIndex + 1
+                        }`}
+                        onChange={(value) =>
+                          changeSectionType(sectionIndex, value)
                         }
-                      >
-                        <option value="heading">Heading</option>
-
-                        <option value="paragraph">Paragraph</option>
-
-                        <option value="list">List</option>
-
-                        <option value="table">Table</option>
-                      </select>
+                      />
                     </div>
 
                     {/* HEADING */}
@@ -845,6 +995,73 @@ export default function EditPage({ params }) {
                           }
                         />
                       </div>
+                    )}
+
+                    {/* EQUATION */}
+
+                    {section.type === "equation" && (
+                      <div className="form-group">
+                        <label>Equation</label>
+
+                        <textarea
+                          rows="3"
+                          placeholder="Example: E = mc^2"
+                          value={section.content?.text || ""}
+                          onChange={(event) =>
+                            updateSectionContent(
+                              sectionIndex,
+                              "text",
+                              event.target.value,
+                            )
+                          }
+                        />
+
+                        <small>
+                          Enter the mathematical equation to display on the
+                          page.
+                        </small>
+                      </div>
+                    )}
+
+                    {/* CODE BLOCK */}
+
+                    {section.type === "code" && (
+                      <>
+                        <div className="form-group">
+                          <label>Language</label>
+
+                          <input
+                            type="text"
+                            placeholder="Example: javascript"
+                            value={section.content?.language || ""}
+                            onChange={(event) =>
+                              updateSectionContent(
+                                sectionIndex,
+                                "language",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Code</label>
+
+                          <textarea
+                            rows="8"
+                            className="code-editor-input"
+                            placeholder={`Example:\nconsole.log("Hello World");`}
+                            value={section.content?.text || ""}
+                            onChange={(event) =>
+                              updateSectionContent(
+                                sectionIndex,
+                                "text",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        </div>
+                      </>
                     )}
 
                     {/* LIST */}
@@ -899,20 +1116,6 @@ export default function EditPage({ params }) {
                               </div>
                             ),
                           )}
-
-                          {(section.content?.items || []).length === 0 && (
-                            <div className="empty-list-items">
-                              <p>No list items added yet.</p>
-
-                              <button
-                                type="button"
-                                className="add-first-item-button"
-                                onClick={() => addListItem(sectionIndex)}
-                              >
-                                + Add First Item
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </div>
                     )}
@@ -945,7 +1148,7 @@ export default function EditPage({ params }) {
 
                         <div className="table-scroll">
                           <div className="table-edit-grid">
-                            {/* TABLE HEADERS */}
+                            {/* HEADERS */}
 
                             <div className="table-header-row">
                               {(section.content?.headers || []).map(
@@ -987,7 +1190,7 @@ export default function EditPage({ params }) {
                               <div className="table-action-heading">Action</div>
                             </div>
 
-                            {/* TABLE ROWS */}
+                            {/* ROWS */}
 
                             {(section.content?.rows || []).map(
                               (row, rowIndex) => (
@@ -1026,20 +1229,6 @@ export default function EditPage({ params }) {
                                 </div>
                               ),
                             )}
-
-                            {(section.content?.rows || []).length === 0 && (
-                              <div className="empty-table">
-                                <p>No rows added yet.</p>
-
-                                <button
-                                  type="button"
-                                  className="add-first-item-button"
-                                  onClick={() => addTableRow(sectionIndex)}
-                                >
-                                  + Add First Row
-                                </button>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1050,7 +1239,7 @@ export default function EditPage({ params }) {
             )}
           </div>
 
-          {/* FORM ACTIONS */}
+          {/* FORM BUTTONS */}
 
           <div className="form-actions">
             <Link href="/pages" className="cancel-button">
