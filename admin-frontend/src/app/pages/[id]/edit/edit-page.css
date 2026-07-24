@@ -440,3 +440,158 @@
     padding: 9px 10px;
   }
 }
+
+/* Nested list */
+.nested-list-editor {
+  width: 100%;
+  min-width: 0;
+  margin-top: 16px;
+}
+
+.nested-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.nested-list-item {
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.nested-parent-row,
+.nested-child-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nested-parent-row input,
+.nested-child-row input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.nested-parent-row input:focus,
+.nested-child-row input:focus {
+  outline: none;
+  border-color: #172554;
+}
+
+.nested-children {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding-left: 24px;
+}
+
+.nested-child-row span {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.nested-children .add-item-button {
+  align-self: flex-start;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .nested-list-item {
+    padding: 12px;
+  }
+
+  .nested-parent-row,
+  .nested-child-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .nested-parent-row input,
+  .nested-child-row input {
+    flex: 1 1 100%;
+  }
+
+  .nested-children {
+    padding-left: 12px;
+  }
+
+  .nested-child-row span {
+    display: none;
+  }
+
+  .nested-parent-row .remove-list-item-button,
+  .nested-child-row .remove-list-item-button {
+    width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .nested-list-item {
+    padding: 10px;
+  }
+
+  .nested-children {
+    padding-left: 8px;
+  }
+
+  .nested-parent-row .remove-list-item-button,
+  .nested-child-row .remove-list-item-button {
+    width: 100%;
+  }
+}
+
+/* Section actions */
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.move-section-button {
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.move-section-button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.move-section-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .section-top {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .section-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .move-section-button {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+}

@@ -172,3 +172,45 @@
   white-space: pre;
   color: #f9fafb;
 }
+
+/* Nested list */
+.nested-list-section {
+  padding: 24px 28px;
+}
+
+.nested-list {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.nested-list-parent {
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.nested-list-children {
+  margin-top: 8px;
+  padding-left: 28px;
+}
+
+.nested-list-children li {
+  margin-bottom: 6px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .nested-list-section {
+    padding: 20px;
+  }
+
+  .nested-list {
+    padding-left: 20px;
+  }
+
+  .nested-list-children {
+    padding-left: 22px;
+  }
+}

@@ -5,7 +5,15 @@ const sectionSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["heading", "paragraph", "list", "table", "equation", "code"],
+      enum: [
+        "heading",
+        "paragraph",
+        "list",
+        "nestedList",
+        "table",
+        "equation",
+        "code",
+      ],
     },
 
     content: {

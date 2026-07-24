@@ -39,6 +39,36 @@ function renderSection(section, index) {
     );
   }
 
+  // Render nested list
+  if (section.type === "nestedList") {
+    const items = Array.isArray(section.content?.items)
+      ? section.content.items
+      : [];
+
+    return (
+      <section
+        className="content-section nested-list-section"
+        key={section._id || index}
+      >
+        <ul className="nested-list">
+          {items.map((item, itemIndex) => (
+            <li className="nested-list-parent" key={itemIndex}>
+              <span>{item?.text}</span>
+
+              {Array.isArray(item?.children) && item.children.length > 0 && (
+                <ul className="nested-list-children">
+                  {item.children.map((child, childIndex) => (
+                    <li key={childIndex}>{child}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   if (section.type === "table") {
     const headers = section.content?.headers || [];
     const rows = section.content?.rows || [];

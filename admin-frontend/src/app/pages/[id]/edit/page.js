@@ -10,8 +10,7 @@ import { getPageById, updatePage } from "@/services/pageService";
 
 import "./edit-page.css";
 
-/* DROPDOWN OPTIONS */
-
+// Dropdown options
 const STATUS_OPTIONS = [
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },
@@ -21,13 +20,13 @@ const SECTION_TYPE_OPTIONS = [
   { value: "heading", label: "Heading" },
   { value: "paragraph", label: "Paragraph" },
   { value: "list", label: "List" },
+  { value: "nestedList", label: "Nested List" },
   { value: "table", label: "Table" },
   { value: "equation", label: "Equation" },
   { value: "code", label: "Code Block" },
 ];
 
-/* CUSTOM RESPONSIVE SELECT */
-
+// Custom select
 function CustomSelect({
   value,
   options,
@@ -69,7 +68,6 @@ function CustomSelect({
         aria-expanded={isOpen}
       >
         <span>{selectedOption?.label}</span>
-
         <span className="custom-select-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
 
@@ -93,8 +91,6 @@ function CustomSelect({
   );
 }
 
-/* EDIT PAGE */
-
 export default function EditPage({ params }) {
   const router = useRouter();
   const { id } = use(params);
@@ -110,16 +106,44 @@ export default function EditPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  /* NORMALIZE BACKEND SECTION DATA */
-
+  // Normalize section data
   const normalizeSection = (section) => {
     if (section.type === "list") {
       return {
         ...section,
         content: {
-          items: Array.isArray(section.content?.items)
-            ? section.content.items
-            : [],
+          items:
+            Array.isArray(section.content?.items) &&
+            section.content.items.length > 0
+              ? section.content.items
+              : [""],
+        },
+      };
+    }
+
+    if (section.type === "nestedList") {
+      const items = Array.isArray(section.content?.items)
+        ? section.content.items
+        : [];
+
+      return {
+        ...section,
+        content: {
+          items:
+            items.length > 0
+              ? items.map((item) => ({
+                  text: item?.text || "",
+                  children:
+                    Array.isArray(item?.children) && item.children.length > 0
+                      ? item.children
+                      : [""],
+                }))
+              : [
+                  {
+                    text: "",
+                    children: [""],
+                  },
+                ],
         },
       };
     }
@@ -164,8 +188,7 @@ export default function EditPage({ params }) {
     };
   };
 
-  /* LOAD EXISTING PAGE */
-
+  // Load page
   useEffect(() => {
     const loadPage = async () => {
       try {
@@ -177,7 +200,6 @@ export default function EditPage({ params }) {
           slug: page?.slug || "",
           description: page?.description || "",
           status: page?.status || "draft",
-
           sections: Array.isArray(page?.sections)
             ? page.sections.map(normalizeSection)
             : [],
@@ -192,8 +214,7 @@ export default function EditPage({ params }) {
     loadPage();
   }, [id]);
 
-  /* UPDATE BASIC FIELDS */
-
+  // Update basic fields
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -203,13 +224,22 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* GET DEFAULT SECTION CONTENT */
-
+  // Default section content
   const getDefaultContent = (type) => {
     switch (type) {
       case "list":
         return {
           items: [""],
+        };
+
+      case "nestedList":
+        return {
+          items: [
+            {
+              text: "",
+              children: [""],
+            },
+          ],
         };
 
       case "table":
@@ -224,11 +254,6 @@ export default function EditPage({ params }) {
           language: "javascript",
         };
 
-      case "equation":
-        return {
-          text: "",
-        };
-
       default:
         return {
           text: "",
@@ -236,12 +261,10 @@ export default function EditPage({ params }) {
     }
   };
 
-  /* ADD SECTION */
-
+  // Add section
   const addSection = () => {
     setFormData((current) => ({
       ...current,
-
       sections: [
         ...current.sections,
         {
@@ -254,16 +277,12 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* CHANGE SECTION TYPE */
-
+  // Change section type
   const changeSectionType = (sectionIndex, newType) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         return {
           ...section,
@@ -274,20 +293,15 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* UPDATE TEXT CONTENT */
-
+  // Update text
   const updateSectionText = (sectionIndex, value) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         return {
           ...section,
-
           content: {
             ...section.content,
             text: value,
@@ -297,20 +311,15 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* UPDATE ANY SECTION CONTENT FIELD */
-
+  // Update content field
   const updateSectionContent = (sectionIndex, field, value) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         return {
           ...section,
-
           content: {
             ...section.content,
             [field]: value,
@@ -320,26 +329,43 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* REMOVE SECTION */
-
+  // Remove section
   const removeSection = (sectionIndex) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.filter((_, index) => index !== sectionIndex),
     }));
   };
 
-  /* LIST FUNCTIONS */
+  // Move section
+  const moveSection = (sectionIndex, direction) => {
+    setFormData((current) => {
+      const newIndex = sectionIndex + direction;
 
+      if (newIndex < 0 || newIndex >= current.sections.length) {
+        return current;
+      }
+
+      const updatedSections = [...current.sections];
+
+      [updatedSections[sectionIndex], updatedSections[newIndex]] = [
+        updatedSections[newIndex],
+        updatedSections[sectionIndex],
+      ];
+
+      return {
+        ...current,
+        sections: updatedSections,
+      };
+    });
+  };
+
+  // List functions
   const addListItem = (sectionIndex) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const items = Array.isArray(section.content?.items)
           ? section.content.items
@@ -347,7 +373,6 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
             items: [...items, ""],
@@ -360,11 +385,8 @@ export default function EditPage({ params }) {
   const updateListItem = (sectionIndex, itemIndex, value) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const items = Array.isArray(section.content?.items)
           ? section.content.items
@@ -372,10 +394,8 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             items: items.map((item, index) =>
               index === itemIndex ? value : item,
             ),
@@ -387,7 +407,6 @@ export default function EditPage({ params }) {
 
   const removeListItem = (sectionIndex, itemIndex) => {
     const section = formData.sections[sectionIndex];
-
     const items = Array.isArray(section?.content?.items)
       ? section.content.items
       : [];
@@ -399,18 +418,13 @@ export default function EditPage({ params }) {
 
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             items: section.content.items.filter(
               (_, index) => index !== itemIndex,
             ),
@@ -420,16 +434,171 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* TABLE - ADD COLUMN */
+  // Nested list functions
+  const addNestedListItem = (sectionIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
 
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items: [
+              ...(section.content?.items || []),
+              {
+                text: "",
+                children: [""],
+              },
+            ],
+          },
+        };
+      }),
+    }));
+  };
+
+  const updateNestedListItem = (sectionIndex, itemIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          text: value,
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  const removeNestedListItem = (sectionIndex, itemIndex) => {
+    const section = formData.sections[sectionIndex];
+    const items = section?.content?.items || [];
+
+    if (items.length <= 1) {
+      toast.error("Nested list must have at least one parent item");
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items: (section.content?.items || []).filter(
+              (_, index) => index !== itemIndex,
+            ),
+          },
+        };
+      }),
+    }));
+  };
+
+  const addNestedChild = (sectionIndex, itemIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          children: [...(items[itemIndex]?.children || []), ""],
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  const updateNestedChild = (sectionIndex, itemIndex, childIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+        const children = [...(items[itemIndex]?.children || [])];
+
+        children[childIndex] = value;
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          children,
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  const removeNestedChild = (sectionIndex, itemIndex, childIndex) => {
+    const section = formData.sections[sectionIndex];
+    const children = section?.content?.items?.[itemIndex]?.children || [];
+
+    if (children.length <= 1) {
+      toast.error("Parent item must have at least one child");
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+        const currentChildren = items[itemIndex]?.children || [];
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          children: currentChildren.filter((_, index) => index !== childIndex),
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  // Table functions
   const addTableColumn = (sectionIndex) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const headers = Array.isArray(section.content?.headers)
           ? section.content.headers
@@ -441,20 +610,15 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             headers: [...headers, `Column ${headers.length + 1}`],
-
             rows: rows.map((row) => [...(Array.isArray(row) ? row : []), ""]),
           },
         };
       }),
     }));
   };
-
-  /* TABLE - REMOVE COLUMN */
 
   const removeTableColumn = (sectionIndex, columnIndex) => {
     const section = formData.sections[sectionIndex];
@@ -470,11 +634,8 @@ export default function EditPage({ params }) {
 
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const currentHeaders = Array.isArray(section.content?.headers)
           ? section.content.headers
@@ -486,12 +647,9 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             headers: currentHeaders.filter((_, index) => index !== columnIndex),
-
             rows: rows.map((row) =>
               Array.isArray(row)
                 ? row.filter((_, index) => index !== columnIndex)
@@ -503,16 +661,11 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* TABLE - UPDATE HEADER */
-
   const updateTableHeader = (sectionIndex, columnIndex, value) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const headers = Array.isArray(section.content?.headers)
           ? section.content.headers
@@ -520,10 +673,8 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             headers: headers.map((header, index) =>
               index === columnIndex ? value : header,
             ),
@@ -533,16 +684,11 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* TABLE - ADD ROW */
-
   const addTableRow = (sectionIndex) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const headers = Array.isArray(section.content?.headers)
           ? section.content.headers
@@ -554,18 +700,14 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             rows: [...rows, headers.map(() => "")],
           },
         };
       }),
     }));
   };
-
-  /* TABLE - REMOVE ROW */
 
   const removeTableRow = (sectionIndex, rowIndex) => {
     const section = formData.sections[sectionIndex];
@@ -581,18 +723,13 @@ export default function EditPage({ params }) {
 
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         return {
           ...section,
-
           content: {
             ...section.content,
-
             rows: section.content.rows.filter((_, index) => index !== rowIndex),
           },
         };
@@ -600,25 +737,18 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* TABLE - UPDATE CELL */
-
   const updateTableCell = (sectionIndex, rowIndex, columnIndex, value) => {
     setFormData((current) => ({
       ...current,
-
       sections: current.sections.map((section, index) => {
-        if (index !== sectionIndex) {
-          return section;
-        }
+        if (index !== sectionIndex) return section;
 
         const rows = Array.isArray(section.content?.rows)
           ? section.content.rows
           : [];
 
         const updatedRows = rows.map((row, currentRowIndex) => {
-          if (currentRowIndex !== rowIndex) {
-            return row;
-          }
+          if (currentRowIndex !== rowIndex) return row;
 
           const safeRow = Array.isArray(row) ? row : [];
 
@@ -629,7 +759,6 @@ export default function EditPage({ params }) {
 
         return {
           ...section,
-
           content: {
             ...section.content,
             rows: updatedRows,
@@ -639,21 +768,15 @@ export default function EditPage({ params }) {
     }));
   };
 
-  /* VALIDATE SECTIONS */
-
+  // Validate sections
   const validateSections = () => {
     for (const section of formData.sections) {
-      /* Heading / Paragraph */
-
       if (section.type === "heading" || section.type === "paragraph") {
         if (!section.content?.text?.trim()) {
           toast.error(`Please enter content for the ${section.type} section`);
-
           return false;
         }
       }
-
-      /* Equation */
 
       if (section.type === "equation") {
         if (!section.content?.text?.trim()) {
@@ -662,43 +785,56 @@ export default function EditPage({ params }) {
         }
       }
 
-      /* Code Block */
-
       if (section.type === "code") {
         if (!section.content?.language?.trim()) {
           toast.error("Please enter a language for the code block");
-
           return false;
         }
 
         if (!section.content?.text?.trim()) {
           toast.error("Please enter code");
-
           return false;
         }
       }
-
-      /* List */
 
       if (section.type === "list") {
         const items = Array.isArray(section.content?.items)
           ? section.content.items
           : [];
 
-        if (items.length === 0) {
-          toast.error("Please add at least one list item");
-
-          return false;
-        }
-
-        if (items.some((item) => !String(item).trim())) {
+        if (items.length === 0 || items.some((item) => !String(item).trim())) {
           toast.error("Please complete all list items");
-
           return false;
         }
       }
 
-      /* Table */
+      if (section.type === "nestedList") {
+        const items = Array.isArray(section.content?.items)
+          ? section.content.items
+          : [];
+
+        if (items.length === 0) {
+          toast.error("Please add at least one nested list item");
+          return false;
+        }
+
+        for (const item of items) {
+          if (!item?.text?.trim()) {
+            toast.error("Please complete all nested list parent items");
+            return false;
+          }
+
+          const children = Array.isArray(item?.children) ? item.children : [];
+
+          if (
+            children.length === 0 ||
+            children.some((child) => !String(child).trim())
+          ) {
+            toast.error("Please complete all nested list child items");
+            return false;
+          }
+        }
+      }
 
       if (section.type === "table") {
         const headers = Array.isArray(section.content?.headers)
@@ -709,21 +845,16 @@ export default function EditPage({ params }) {
           ? section.content.rows
           : [];
 
-        if (headers.length === 0) {
-          toast.error("Table must have at least one column");
-
-          return false;
-        }
-
-        if (headers.some((header) => !String(header).trim())) {
+        if (
+          headers.length === 0 ||
+          headers.some((header) => !String(header).trim())
+        ) {
           toast.error("Please complete all table headers");
-
           return false;
         }
 
         if (rows.length === 0) {
           toast.error("Please add at least one table row");
-
           return false;
         }
 
@@ -733,7 +864,6 @@ export default function EditPage({ params }) {
 
         if (hasEmptyCell) {
           toast.error("Please complete all table cells");
-
           return false;
         }
       }
@@ -742,8 +872,7 @@ export default function EditPage({ params }) {
     return true;
   };
 
-  /* SAVE PAGE */
-
+  // Save page
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -757,26 +886,19 @@ export default function EditPage({ params }) {
       return;
     }
 
-    if (!validateSections()) {
-      return;
-    }
+    if (!validateSections()) return;
 
     try {
       setSaving(true);
 
       const payload = {
         ...formData,
-
         title: formData.title.trim(),
-
         slug: formData.slug.trim().toLowerCase().replace(/\s+/g, "-"),
-
         description: formData.description.trim(),
 
         sections: formData.sections.map((section) => {
-          // MongoDB generates section IDs automatically.
           const { _id, ...sectionWithoutId } = section;
-
           return sectionWithoutId;
         }),
       };
@@ -794,8 +916,6 @@ export default function EditPage({ params }) {
     }
   };
 
-  /* LOADING */
-
   if (loading) {
     return (
       <AdminLayout>
@@ -806,17 +926,12 @@ export default function EditPage({ params }) {
     );
   }
 
-  /* UI */
-
   return (
     <AdminLayout>
       <div className="new-page-container">
-        {/* PAGE HEADING */}
-
         <div className="new-page-heading">
           <div>
             <h1>Edit Page</h1>
-
             <p>Update your website page information and content.</p>
           </div>
 
@@ -825,11 +940,7 @@ export default function EditPage({ params }) {
           </Link>
         </div>
 
-        {/* FORM */}
-
         <form className="page-form" onSubmit={handleSubmit}>
-          {/* PAGE TITLE */}
-
           <div className="form-group">
             <label htmlFor="title">
               Page Title <span>*</span>
@@ -843,8 +954,6 @@ export default function EditPage({ params }) {
               onChange={handleChange}
             />
           </div>
-
-          {/* SLUG */}
 
           <div className="form-group">
             <label htmlFor="slug">
@@ -866,8 +975,6 @@ export default function EditPage({ params }) {
             <small>Changing this will change the public page URL.</small>
           </div>
 
-          {/* DESCRIPTION */}
-
           <div className="form-group">
             <label htmlFor="description">Description</label>
 
@@ -879,8 +986,6 @@ export default function EditPage({ params }) {
               onChange={handleChange}
             />
           </div>
-
-          {/* STATUS */}
 
           <div className="form-group">
             <label>Status</label>
@@ -898,13 +1003,10 @@ export default function EditPage({ params }) {
             />
           </div>
 
-          {/* PAGE CONTENT */}
-
           <div className="sections-area">
             <div className="sections-header">
               <div>
                 <h2>Page Content</h2>
-
                 <p>Edit the content sections displayed on this page.</p>
               </div>
 
@@ -917,12 +1019,9 @@ export default function EditPage({ params }) {
               </button>
             </div>
 
-            {/* EMPTY STATE */}
-
             {formData.sections.length === 0 ? (
               <div className="empty-sections">
                 <p>No content sections added yet.</p>
-
                 <span>Click &quot;+ Add Section&quot; to add content.</span>
               </div>
             ) : (
@@ -932,21 +1031,39 @@ export default function EditPage({ params }) {
                     className="section-card"
                     key={section._id || `section-${sectionIndex}`}
                   >
-                    {/* SECTION HEADER */}
-
                     <div className="section-top">
                       <strong>Section {sectionIndex + 1}</strong>
 
-                      <button
-                        type="button"
-                        className="remove-section-button"
-                        onClick={() => removeSection(sectionIndex)}
-                      >
-                        Remove
-                      </button>
-                    </div>
+                      <div className="section-actions">
+                        <button
+                          type="button"
+                          className="move-section-button"
+                          onClick={() => moveSection(sectionIndex, -1)}
+                          disabled={sectionIndex === 0}
+                        >
+                          ↑ Up
+                        </button>
 
-                    {/* SECTION TYPE */}
+                        <button
+                          type="button"
+                          className="move-section-button"
+                          onClick={() => moveSection(sectionIndex, 1)}
+                          disabled={
+                            sectionIndex === formData.sections.length - 1
+                          }
+                        >
+                          ↓ Down
+                        </button>
+
+                        <button
+                          type="button"
+                          className="remove-section-button"
+                          onClick={() => removeSection(sectionIndex)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
 
                     <div className="form-group">
                       <label>Section Type</label>
@@ -963,8 +1080,6 @@ export default function EditPage({ params }) {
                       />
                     </div>
 
-                    {/* HEADING */}
-
                     {section.type === "heading" && (
                       <div className="form-group">
                         <label>Heading Text</label>
@@ -980,8 +1095,6 @@ export default function EditPage({ params }) {
                       </div>
                     )}
 
-                    {/* PARAGRAPH */}
-
                     {section.type === "paragraph" && (
                       <div className="form-group">
                         <label>Paragraph Text</label>
@@ -996,8 +1109,6 @@ export default function EditPage({ params }) {
                         />
                       </div>
                     )}
-
-                    {/* EQUATION */}
 
                     {section.type === "equation" && (
                       <div className="form-group">
@@ -1022,8 +1133,6 @@ export default function EditPage({ params }) {
                         </small>
                       </div>
                     )}
-
-                    {/* CODE BLOCK */}
 
                     {section.type === "code" && (
                       <>
@@ -1063,8 +1172,6 @@ export default function EditPage({ params }) {
                         </div>
                       </>
                     )}
-
-                    {/* LIST */}
 
                     {section.type === "list" && (
                       <div className="list-editor">
@@ -1120,7 +1227,113 @@ export default function EditPage({ params }) {
                       </div>
                     )}
 
-                    {/* TABLE */}
+                    {section.type === "nestedList" && (
+                      <div className="nested-list-editor">
+                        <div className="list-editor-header">
+                          <label>Nested List Items</label>
+
+                          <button
+                            type="button"
+                            className="add-item-button"
+                            onClick={() => addNestedListItem(sectionIndex)}
+                          >
+                            + Add Parent Item
+                          </button>
+                        </div>
+
+                        <div className="nested-list-items">
+                          {(section.content?.items || []).map(
+                            (item, itemIndex) => (
+                              <div
+                                className="nested-list-item"
+                                key={`nested-${sectionIndex}-${itemIndex}`}
+                              >
+                                <div className="nested-parent-row">
+                                  <input
+                                    type="text"
+                                    placeholder={`Parent item ${itemIndex + 1}`}
+                                    value={item?.text || ""}
+                                    onChange={(event) =>
+                                      updateNestedListItem(
+                                        sectionIndex,
+                                        itemIndex,
+                                        event.target.value,
+                                      )
+                                    }
+                                  />
+
+                                  <button
+                                    type="button"
+                                    className="remove-list-item-button"
+                                    onClick={() =>
+                                      removeNestedListItem(
+                                        sectionIndex,
+                                        itemIndex,
+                                      )
+                                    }
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+
+                                <div className="nested-children">
+                                  {(item?.children || []).map(
+                                    (child, childIndex) => (
+                                      <div
+                                        className="nested-child-row"
+                                        key={`child-${sectionIndex}-${itemIndex}-${childIndex}`}
+                                      >
+                                        <span>↳</span>
+
+                                        <input
+                                          type="text"
+                                          placeholder={`Child item ${
+                                            childIndex + 1
+                                          }`}
+                                          value={child}
+                                          onChange={(event) =>
+                                            updateNestedChild(
+                                              sectionIndex,
+                                              itemIndex,
+                                              childIndex,
+                                              event.target.value,
+                                            )
+                                          }
+                                        />
+
+                                        <button
+                                          type="button"
+                                          className="remove-list-item-button"
+                                          onClick={() =>
+                                            removeNestedChild(
+                                              sectionIndex,
+                                              itemIndex,
+                                              childIndex,
+                                            )
+                                          }
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    ),
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    className="add-item-button"
+                                    onClick={() =>
+                                      addNestedChild(sectionIndex, itemIndex)
+                                    }
+                                  >
+                                    + Add Child
+                                  </button>
+                                </div>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {section.type === "table" && (
                       <div className="table-editor">
@@ -1148,8 +1361,6 @@ export default function EditPage({ params }) {
 
                         <div className="table-scroll">
                           <div className="table-edit-grid">
-                            {/* HEADERS */}
-
                             <div className="table-header-row">
                               {(section.content?.headers || []).map(
                                 (header, columnIndex) => (
@@ -1189,8 +1400,6 @@ export default function EditPage({ params }) {
 
                               <div className="table-action-heading">Action</div>
                             </div>
-
-                            {/* ROWS */}
 
                             {(section.content?.rows || []).map(
                               (row, rowIndex) => (
@@ -1238,8 +1447,6 @@ export default function EditPage({ params }) {
               </div>
             )}
           </div>
-
-          {/* FORM BUTTONS */}
 
           <div className="form-actions">
             <Link href="/pages" className="cancel-button">

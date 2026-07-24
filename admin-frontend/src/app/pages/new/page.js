@@ -95,30 +95,13 @@ const STATUS_OPTIONS = [
 ];
 
 const SECTION_TYPE_OPTIONS = [
-  {
-    value: "heading",
-    label: "Heading",
-  },
-  {
-    value: "paragraph",
-    label: "Paragraph",
-  },
-  {
-    value: "list",
-    label: "List",
-  },
-  {
-    value: "table",
-    label: "Table",
-  },
-  {
-    value: "equation",
-    label: "Equation",
-  },
-  {
-    value: "code",
-    label: "Code Block",
-  },
+  { value: "heading", label: "Heading" },
+  { value: "paragraph", label: "Paragraph" },
+  { value: "list", label: "List" },
+  { value: "nestedList", label: "Nested List" },
+  { value: "table", label: "Table" },
+  { value: "equation", label: "Equation" },
+  { value: "code", label: "Code Block" },
 ];
 
 /* CREATE PAGE */
@@ -206,6 +189,15 @@ export default function NewPage() {
             content = {
               items: [""],
             };
+          } else if (value === "nestedList") {
+            content = {
+              items: [
+                {
+                  text: "",
+                  children: [""],
+                },
+              ],
+            };
           } else if (value === "table") {
             content = {
               headers: ["Column 1", "Column 2"],
@@ -286,6 +278,30 @@ export default function NewPage() {
 
       sections: current.sections.filter((_, index) => index !== sectionIndex),
     }));
+  };
+
+  /* MOVE SECTION */
+
+  const moveSection = (sectionIndex, direction) => {
+    setFormData((current) => {
+      const newIndex = sectionIndex + direction;
+
+      if (newIndex < 0 || newIndex >= current.sections.length) {
+        return current;
+      }
+
+      const sections = [...current.sections];
+
+      [sections[sectionIndex], sections[newIndex]] = [
+        sections[newIndex],
+        sections[sectionIndex],
+      ];
+
+      return {
+        ...current,
+        sections,
+      };
+    });
   };
 
   /*  LIST FUNCTIONS */
@@ -380,6 +396,162 @@ export default function NewPage() {
         sections: updatedSections,
       };
     });
+  };
+
+  /* NESTED LIST FUNCTIONS */
+
+  // Add a new parent item
+  const addNestedListItem = (sectionIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items: [
+              ...(section.content?.items || []),
+              {
+                text: "",
+                children: [""],
+              },
+            ],
+          },
+        };
+      }),
+    }));
+  };
+
+  // Update parent item text
+  const updateNestedListItem = (sectionIndex, itemIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          text: value,
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  // Remove a parent item
+  const removeNestedListItem = (sectionIndex, itemIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = section.content?.items || [];
+
+        // Keep at least one parent item
+        if (items.length <= 1) return section;
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items: items.filter((_, index) => index !== itemIndex),
+          },
+        };
+      }),
+    }));
+  };
+
+  // Add a child item under a parent
+  const addNestedChild = (sectionIndex, itemIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          children: [...(items[itemIndex]?.children || []), ""],
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  // Update a child item
+  const updateNestedChild = (sectionIndex, itemIndex, childIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+        const children = [...(items[itemIndex]?.children || [])];
+
+        children[childIndex] = value;
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          children,
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
+  };
+
+  // Remove a child item
+  const removeNestedChild = (sectionIndex, itemIndex, childIndex) => {
+    setFormData((current) => ({
+      ...current,
+      sections: current.sections.map((section, index) => {
+        if (index !== sectionIndex) return section;
+
+        const items = [...(section.content?.items || [])];
+        const children = items[itemIndex]?.children || [];
+
+        // Keep at least one child
+        if (children.length <= 1) return section;
+
+        items[itemIndex] = {
+          ...items[itemIndex],
+          children: children.filter((_, index) => index !== childIndex),
+        };
+
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items,
+          },
+        };
+      }),
+    }));
   };
 
   /* TABLE - UPDATE HEADER */
@@ -798,13 +970,35 @@ export default function NewPage() {
                     <div className="section-top">
                       <strong>Section {sectionIndex + 1}</strong>
 
-                      <button
-                        type="button"
-                        className="remove-section-button"
-                        onClick={() => removeSection(sectionIndex)}
-                      >
-                        Remove
-                      </button>
+                      <div className="section-actions">
+                        <button
+                          type="button"
+                          className="move-section-button"
+                          onClick={() => moveSection(sectionIndex, -1)}
+                          disabled={sectionIndex === 0}
+                        >
+                          ↑ Up
+                        </button>
+
+                        <button
+                          type="button"
+                          className="move-section-button"
+                          onClick={() => moveSection(sectionIndex, 1)}
+                          disabled={
+                            sectionIndex === formData.sections.length - 1
+                          }
+                        >
+                          ↓ Down
+                        </button>
+
+                        <button
+                          type="button"
+                          className="remove-section-button"
+                          onClick={() => removeSection(sectionIndex)}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
 
                     {/* SECTION TYPE CUSTOM SELECT */}
@@ -973,6 +1167,114 @@ export default function NewPage() {
                               </div>
                             ),
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* NESTED LIST */}
+                    {section.type === "nestedList" && (
+                      <div className="form-group">
+                        <label>Nested List Items</label>
+
+                        <div className="nested-list-editor">
+                          {(section.content?.items || []).map(
+                            (item, itemIndex) => (
+                              <div className="nested-list-item" key={itemIndex}>
+                                {/* Parent item */}
+                                <div className="list-item-row">
+                                  <input
+                                    type="text"
+                                    placeholder={`Parent item ${itemIndex + 1}`}
+                                    value={item.text || ""}
+                                    onChange={(event) =>
+                                      updateNestedListItem(
+                                        sectionIndex,
+                                        itemIndex,
+                                        event.target.value,
+                                      )
+                                    }
+                                  />
+
+                                  <button
+                                    type="button"
+                                    className="small-remove-button"
+                                    onClick={() =>
+                                      removeNestedListItem(
+                                        sectionIndex,
+                                        itemIndex,
+                                      )
+                                    }
+                                    disabled={
+                                      (section.content?.items || []).length <= 1
+                                    }
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+
+                                {/* Child items */}
+                                <div className="nested-children">
+                                  {(item.children || []).map(
+                                    (child, childIndex) => (
+                                      <div
+                                        className="list-item-row nested-child-row"
+                                        key={childIndex}
+                                      >
+                                        <input
+                                          type="text"
+                                          placeholder={`Child item ${childIndex + 1}`}
+                                          value={child}
+                                          onChange={(event) =>
+                                            updateNestedChild(
+                                              sectionIndex,
+                                              itemIndex,
+                                              childIndex,
+                                              event.target.value,
+                                            )
+                                          }
+                                        />
+
+                                        <button
+                                          type="button"
+                                          className="small-remove-button"
+                                          onClick={() =>
+                                            removeNestedChild(
+                                              sectionIndex,
+                                              itemIndex,
+                                              childIndex,
+                                            )
+                                          }
+                                          disabled={
+                                            (item.children || []).length <= 1
+                                          }
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    ),
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    className="secondary-button"
+                                    onClick={() =>
+                                      addNestedChild(sectionIndex, itemIndex)
+                                    }
+                                  >
+                                    + Add Child
+                                  </button>
+                                </div>
+                              </div>
+                            ),
+                          )}
+
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => addNestedListItem(sectionIndex)}
+                          >
+                            + Add Parent Item
+                          </button>
                         </div>
                       </div>
                     )}
